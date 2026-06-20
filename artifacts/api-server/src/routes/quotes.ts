@@ -3,23 +3,19 @@ import { db } from "@workspace/db";
 import { quotesTable, shipmentsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { CreateQuoteBody, GetQuoteParams, AcceptQuoteParams } from "@workspace/api-zod";
+import { rateShipment } from "../services/rateEngine";
 
 const router = Router();
 
-function calcQuote(serviceType: string, weight: number, originCountry: string, destCountry: string): { cost: number; days: number } {
-  const rates: Record<string, { rate: number; days: number }> = {
-    standard: { rate: 5.5, days: 5 },
-    express: { rate: 12.0, days: 2 },
-    overnight: { rate: 28.0, days: 1 },
-    freight: { rate: 2.5, days: 10 },
-    international: { rate: 18.0, days: 14 },
-  };
-  const r = rates[serviceType] ?? rates.standard;
-  const isInternational = originCountry !== destCountry;
-  const multiplier = isInternational ? 1.4 : 1;
-  const cost = Math.round(r.rate * Math.max(weight, 1) * multiplier * 100) / 100;
-  const days = isInternational ? r.days + 3 : r.days;
-  return { cost, days };
+function calcQuote(
+  serviceType: string,
+  weight: number,
+  originCountry: string,
+  destCountry: string,
+  dimensions?: string | null,
+): { cost: number; days: number } {
+  const r = rateShipment({ serviceType, weight, originCountry, destinationCountry: destCountry, dimensions });
+  return { cost: r.cost, days: r.days };
 }
 
 router.get("/", async (_req, res) => {
@@ -35,7 +31,7 @@ router.post("/", async (req, res) => {
   }
 
   const data = parsed.data;
-  const { cost, days } = calcQuote(data.serviceType, Number(data.weight), data.originCountry, data.destinationCountry);
+  const { cost, days } = calcQuote(data.serviceType, Number(data.weight), data.originCountry, data.destinationCountry, data.dimensions);
 
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + 7);

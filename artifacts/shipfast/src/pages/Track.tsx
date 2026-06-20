@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format } from "date-fns";
+import { statusLabel, statusBadgeClass, SHIPMENT_STEPS } from "@/lib/status";
 
 export default function Track() {
   const [location, setLocation] = useLocation();
@@ -30,21 +31,22 @@ export default function Track() {
   };
 
   const getStatusIcon = (status: string) => {
-    if (status === 'delivered') return <CheckCircle2 className="w-6 h-6 text-green-500" />;
-    if (status === 'cancelled' || status === 'on_hold') return <AlertTriangle className="w-6 h-6 text-red-500" />;
-    return <Clock className="w-6 h-6 text-blue-500" />;
+    if (status === 'delivered') return <CheckCircle2 className="w-5 h-5" />;
+    if (status === 'cancelled' || status === 'on_hold') return <AlertTriangle className="w-5 h-5" />;
+    return <Clock className="w-5 h-5" />;
   };
 
-  const STEPS = ['pending', 'processing', 'in_transit', 'out_for_delivery', 'delivered'];
-  const currentStepIndex = data ? STEPS.indexOf(data.shipment.status) : -1;
+  const STEPS = [...SHIPMENT_STEPS];
+  const currentStepIndex = data ? STEPS.indexOf(data.shipment.status as typeof SHIPMENT_STEPS[number]) : -1;
 
   return (
     <PublicLayout>
       <div className="bg-muted/30 pt-16 pb-24 min-h-[calc(100vh-64px)]">
         <div className="container mx-auto px-4 max-w-4xl">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Track Your Shipment</h1>
-            <p className="text-muted-foreground text-lg">Enter your tracking number to get real-time updates.</p>
+          <div className="mb-10 text-center">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-accent">Live tracking</p>
+            <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight">Track your shipment</h1>
+            <p className="mt-3 text-lg text-muted-foreground">Enter your tracking number for real-time status.</p>
           </div>
 
           <Card className="mb-8 border-primary/20 shadow-lg">
@@ -55,11 +57,11 @@ export default function Track() {
                   <Input 
                     value={trackingNumber}
                     onChange={(e) => setTrackingNumber(e.target.value)}
-                    placeholder="e.g. SF-123456789" 
-                    className="pl-10 h-12 text-lg"
+                    placeholder="SHF-K8F2-2210"
+                    className="pl-10 h-12 text-lg font-mono"
                   />
                 </div>
-                <Button type="submit" size="lg" className="h-12 px-8">Track Package</Button>
+                <Button type="submit" size="lg" className="h-12 bg-accent px-8 text-accent-foreground hover:bg-accent/90">Track package</Button>
               </form>
             </CardContent>
           </Card>
@@ -85,13 +87,15 @@ export default function Track() {
                 <CardHeader className="bg-muted/30 border-b pb-6">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div>
-                      <CardTitle className="text-2xl flex items-center gap-2 mb-2">
+                      <CardTitle className="text-2xl flex items-center gap-2 mb-2 font-mono">
                         <Package className="w-6 h-6 text-primary" />
                         {data.shipment.trackingNumber}
                       </CardTitle>
-                      <CardDescription className="text-base flex items-center gap-2">
-                        {getStatusIcon(data.shipment.status)}
-                        <span className="font-medium capitalize text-foreground">{data.shipment.status.replace(/_/g, ' ')}</span>
+                      <CardDescription className="text-base">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold ${statusBadgeClass(data.shipment.status)}`}>
+                          {getStatusIcon(data.shipment.status)}
+                          {statusLabel(data.shipment.status)}
+                        </span>
                       </CardDescription>
                     </div>
                     <div className="text-left md:text-right">
@@ -117,8 +121,8 @@ export default function Track() {
                             } ${isCurrent ? 'ring-4 ring-primary/20' : ''}`}>
                               {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-2 h-2 rounded-full bg-current opacity-50" />}
                             </div>
-                            <span className={`text-xs font-medium hidden sm:block capitalize ${isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {step.replace(/_/g, ' ')}
+                            <span className={`text-xs font-medium hidden sm:block ${isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              {statusLabel(step)}
                             </span>
                           </div>
                         )
@@ -158,7 +162,7 @@ export default function Track() {
                           <div className="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
                           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                             <div>
-                              <p className="font-medium capitalize">{event.status.replace(/_/g, ' ')}</p>
+                              <p className="font-medium">{statusLabel(event.status)}</p>
                               <p className="text-muted-foreground">{event.description}</p>
                               <p className="text-sm font-medium mt-1 flex items-center gap-1">
                                 <MapPin className="w-3 h-3" />

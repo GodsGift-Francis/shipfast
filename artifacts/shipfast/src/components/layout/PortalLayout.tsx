@@ -1,131 +1,134 @@
 import { Link, useLocation } from "wouter";
-import { 
-  Package2, LayoutDashboard, Package, FileText, Users, 
-  Map, Bell, Receipt, Menu, LogOut, Loader2, User
-} from "lucide-react";
+import { LayoutDashboard, Package, FileText, Users, Map, Bell, Receipt, Menu, LogOut, Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHealthCheck } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/shipments", label: "Shipments", icon: Package },
+  { href: "/quotes", label: "Quotes", icon: FileText },
+  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/invoices", label: "Invoices", icon: Receipt },
+  { href: "/routes", label: "Routes", icon: Map },
+  { href: "/notifications", label: "Alerts", icon: Bell },
+];
+
+function BrandMark() {
+  return (
+    <Link href="/" className="flex items-center gap-2.5 text-sidebar-foreground" data-testid="link-portal-brand">
+      <span className="grid h-8 w-8 place-items-center rounded-[7px] bg-accent font-mono text-[11px] font-bold tracking-tight text-accent-foreground">
+        SHF
+      </span>
+      <span className="font-display text-lg font-extrabold tracking-tight">ShipFast Ops</span>
+    </Link>
+  );
+}
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { isLoading: healthLoading, isError } = useHealthCheck();
   const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
 
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/shipments", label: "Shipments", icon: Package },
-    { href: "/quotes", label: "Quotes", icon: FileText },
-    { href: "/customers", label: "Customers", icon: Users },
-    { href: "/invoices", label: "Invoices", icon: Receipt },
-    { href: "/routes", label: "Routes", icon: Map },
-    { href: "/notifications", label: "Alerts", icon: Bell },
-  ];
-
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="text-center space-y-4">
-          <Package2 className="w-12 h-12 text-primary mx-auto" />
-          <h1 className="text-2xl font-bold">ShipFast Operations Portal</h1>
-          <p className="text-muted-foreground">Please log in to access the portal.</p>
-          <Button onClick={login} size="lg">Log In to Continue</Button>
+      <div className="flex min-h-screen items-center justify-center bg-primary px-4 text-primary-foreground">
+        <div className="space-y-5 text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-lg bg-accent font-mono text-sm font-bold text-accent-foreground">SHF</span>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight">ShipFast Operations</h1>
+          <p className="text-primary-foreground/70">Log in to access the portal.</p>
+          <Button onClick={login} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90" data-testid="button-portal-login">
+            Log in to continue
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-muted/30">
+    <div className="flex min-h-screen bg-secondary/30">
       {/* Sidebar */}
-      <aside className="w-64 border-r bg-sidebar flex-col hidden md:flex">
-        <div className="h-16 flex items-center px-6 border-b">
-          <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl tracking-tight">
-            <Package2 className="w-6 h-6 text-accent" />
-            <span>ShipFast Ops</span>
-          </Link>
+      <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <div className="flex h-16 items-center border-b border-sidebar-border px-6">
+          <BrandMark />
         </div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+          <p className="px-3 pb-2 font-mono text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">Operations</p>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.startsWith(item.href);
             return (
-              <Link key={item.href} href={item.href}>
-                <div className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                  isActive 
-                    ? "bg-primary/10 text-primary font-medium" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}>
-                  <Icon className="w-4 h-4" />
+              <Link key={item.href} href={item.href} data-testid={`link-portal-${item.label.toLowerCase()}`}>
+                <div
+                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                    isActive
+                      ? "bg-accent/15 font-semibold text-accent"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
                   {item.label}
                 </div>
               </Link>
             );
           })}
         </nav>
-        <div className="p-4 border-t space-y-3">
+        <div className="space-y-3 border-t border-sidebar-border p-4">
           {user && (
             <div className="flex items-center gap-3 px-2">
-              <Avatar className="w-8 h-8">
+              <Avatar className="h-8 w-8">
                 <AvatarImage src={user.profileImageUrl || undefined} />
-                <AvatarFallback><User className="w-4 h-4" /></AvatarFallback>
+                <AvatarFallback className="bg-sidebar-accent text-sidebar-foreground"><User className="h-4 w-4" /></AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{user.firstName} {user.lastName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="truncate text-sm font-medium">{user.firstName} {user.lastName}</p>
+                <p className="truncate text-xs text-sidebar-foreground/60">{user.email}</p>
               </div>
             </div>
           )}
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={logout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Log Out
+          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={logout} data-testid="button-portal-logout">
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
           </Button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b bg-background flex items-center justify-between px-6 sticky top-0 z-10">
+      {/* Main */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-background px-6">
           <div className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="w-5 h-5" />
-            </Button>
+            <BrandMark />
           </div>
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="ml-auto flex items-center gap-4">
             {healthLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                System Check...
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Checking
               </div>
             ) : isError ? (
-              <div className="flex items-center gap-2 text-xs text-destructive">
-                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                System Offline
+              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-destructive">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> Offline
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-green-600 font-medium">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                Systems Operational
+              <div className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--chart-3))]">
+                <span className="h-2 w-2 rounded-full bg-[hsl(var(--chart-3))]" /> Operational
               </div>
             )}
-            <Link href="/notifications" className="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full border border-background" />
+            <Link href="/notifications" className="relative p-2 text-muted-foreground transition-colors hover:text-foreground" data-testid="link-portal-alerts">
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-background bg-accent" />
             </Link>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

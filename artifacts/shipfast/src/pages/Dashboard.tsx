@@ -14,21 +14,21 @@ export default function Dashboard() {
   const { data: revenueData, isLoading: revenueLoading } = useGetRevenueTrend();
 
   const STATUS_COLORS: Record<string, string> = {
-    pending: "#f59e0b", // amber-500
-    processing: "#3b82f6", // blue-500
-    in_transit: "#6366f1", // indigo-500
-    out_for_delivery: "#ec4899", // pink-500
-    delivered: "#22c55e", // green-500
-    cancelled: "#ef4444", // red-500
-    on_hold: "#64748b", // slate-500
+    pending: "#E8A22A",
+    processing: "#4E8FB0",
+    in_transit: "#2E6F95",
+    out_for_delivery: "#C8821A",
+    delivered: "#0F7B6C",
+    cancelled: "#C0392B",
+    on_hold: "#7A8794",
   };
 
   return (
     <PortalLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your logistics network.</p>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-accent">Operations overview</p>
+          <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">Dashboard</h1>
         </div>
 
         {/* Stats Row */}
@@ -63,7 +63,7 @@ export default function Dashboard() {
           {/* Revenue Chart */}
           <Card className="md:col-span-4">
             <CardHeader>
-              <CardTitle>Revenue Trend</CardTitle>
+              <CardTitle className="font-display">Revenue trend</CardTitle>
               <CardDescription>Monthly revenue vs shipments</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px]">
@@ -113,7 +113,7 @@ export default function Dashboard() {
           {/* Status Breakdown */}
           <Card className="md:col-span-3">
             <CardHeader>
-              <CardTitle>Shipment Status</CardTitle>
+              <CardTitle className="font-display">Shipment status</CardTitle>
               <CardDescription>Current state of all active shipments</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px]">
@@ -152,7 +152,7 @@ export default function Dashboard() {
         {/* Activity Feed */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="font-display">Recent activity</CardTitle>
             <CardDescription>Latest updates across your network</CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,9 +167,9 @@ export default function Dashboard() {
                 {activity.map((item) => (
                   <div key={item.id} className="flex gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      {item.type === 'delivered' ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : 
-                       item.type === 'status_update' ? <Truck className="w-5 h-5 text-blue-500" /> :
-                       <AlertTriangle className="w-5 h-5 text-amber-500" />}
+                      {item.type === 'delivered' ? <CheckCircle2 className="w-5 h-5 text-[hsl(var(--chart-3))]" /> :
+                       item.type === 'status_update' ? <Truck className="w-5 h-5 text-primary" /> :
+                       <AlertTriangle className="w-5 h-5 text-accent" />}
                     </div>
                     <div className="flex-1 space-y-1">
                       <p className="text-sm font-medium leading-none">{item.title}</p>
@@ -193,16 +193,17 @@ export default function Dashboard() {
 
 function StatsCard({ title, value, icon: Icon, loading }: { title: string; value?: number | string; icon: any; loading: boolean }) {
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      <span className="absolute left-0 top-0 h-full w-1 bg-accent" />
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <CardTitle className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         {loading ? (
-          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-9 w-24" />
         ) : (
-          <div className="text-2xl font-bold">{value ?? "-"}</div>
+          <div className="font-display text-3xl font-extrabold tracking-tight">{value ?? "-"}</div>
         )}
       </CardContent>
     </Card>

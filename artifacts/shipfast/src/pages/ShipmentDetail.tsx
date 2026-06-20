@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeClass, statusLabel } from "@/lib/status";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,15 +48,7 @@ export default function ShipmentDetail() {
 
   const [isAddingEvent, setIsAddingEvent] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'delivered': return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case 'in_transit': return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case 'pending': return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300";
-      case 'cancelled': return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
-    }
-  };
+  const getStatusColor = (status: string) => statusBadgeClass(status);
 
   const handleUpdateStatus = (status: string) => {
     updateShipment.mutate({ id, data: { status: status as ShipmentUpdateStatus } }, {
@@ -126,8 +119,8 @@ export default function ShipmentDetail() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-3xl font-bold tracking-tight">Shipment {shipment.trackingNumber}</h1>
-              <Badge variant="outline" className={`capitalize border-0 ${getStatusColor(shipment.status)}`}>
-                {shipment.status.replace(/_/g, ' ')}
+              <Badge variant="outline" className={`border ${getStatusColor(shipment.status)}`}>
+                {statusLabel(shipment.status)}
               </Badge>
             </div>
             <p className="text-muted-foreground">Created on {format(new Date(shipment.createdAt), 'MMMM dd, yyyy')}</p>

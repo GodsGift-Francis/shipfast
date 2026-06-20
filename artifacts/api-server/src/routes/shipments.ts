@@ -16,6 +16,7 @@ import {
   type ListShipmentsQuery,
 } from "@workspace/api-zod";
 import { applyStatusChange } from "../services/shipmentStatus";
+import { rateShipment } from "../services/rateEngine";
 import { notifyStatusChange } from "../lib/notifications";
 
 const router = Router();
@@ -27,16 +28,14 @@ function generateTrackingNumber(): string {
   return `${prefix}${timestamp}${random}`;
 }
 
-function calcShippingCost(serviceType: string, weight: number): number {
-  const rates: Record<string, number> = {
-    standard: 5.5,
-    express: 12.0,
-    overnight: 28.0,
-    freight: 2.5,
-    international: 18.0,
-  };
-  const baseRate = rates[serviceType] ?? 5.5;
-  return Math.round(baseRate * Math.max(weight, 1) * 100) / 100;
+function calcShippingCost(serviceType: string, weight: number, originCountry?: string, destinationCountry?: string, dimensions?: string | null): number {
+  return rateShipment({
+    serviceType,
+    weight,
+    originCountry: originCountry ?? "",
+    destinationCountry: destinationCountry ?? "",
+    dimensions,
+  }).cost;
 }
 
 function calcEstimatedDelivery(serviceType: string): Date {
@@ -94,7 +93,7 @@ router.post("/", async (req, res) => {
 
   const data = parsed.data;
   const trackingNumber = generateTrackingNumber();
-  const shippingCost = calcShippingCost(data.serviceType, Number(data.weight));
+  const shippingCost = calcShippingCost(data.serviceType, Number(data.weight), data.originCountry, data.destinationCountry, data.dimensions);
   const estimatedDelivery = calcEstimatedDelivery(data.serviceType);
 
   const [shipment] = await db.insert(shipmentsTable).values({
