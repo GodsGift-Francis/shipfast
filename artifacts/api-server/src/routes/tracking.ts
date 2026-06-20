@@ -1,0 +1,120 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import { shipmentsTable, trackingEventsTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { TrackPackageParams, ListTrackingEventsParams, AddTrackingEventParams, AddTrackingEventBody } from "@workspace/api-zod";
+
+const router = Router();
+
+router.get("/:trackingNumber", async (req, res) => {
+  const parsed = TrackPackageParams.safeParse({ trackingNumber: req.params.trackingNumber });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid tracking number" });
+    return;
+  }
+
+  const [shipment] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.trackingNumber, parsed.data.trackingNumber));
+  if (!shipment) {
+    res.status(404).json({ error: "Shipment not found" });
+    return;
+  }
+
+  const events = await db.select().from(trackingEventsTable).where(eq(trackingEventsTable.shipmentId, shipment.id)).orderBy(desc(trackingEventsTable.timestamp));
+
+  res.json({
+    shipment: formatShipment(shipment),
+    events: events.map(formatEvent),
+  });
+});
+
+export function createEventsRouter() {
+  const eventsRouter = Router({ mergeParams: true });
+
+  eventsRouter.get("/", async (req, res) => {
+    const parsed = ListTrackingEventsParams.safeParse({ id: Number(req.params.id) });
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+
+    const events = await db.select().from(trackingEventsTable).where(eq(trackingEventsTable.shipmentId, parsed.data.id)).orderBy(desc(trackingEventsTable.timestamp));
+    res.json(events.map(formatEvent));
+  });
+
+  eventsRouter.post("/", async (req, res) => {
+    const idParsed = AddTrackingEventParams.safeParse({ id: Number(req.params.id) });
+    if (!idParsed.success) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+
+    const parsed = AddTrackingEventBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    const [event] = await db.insert(trackingEventsTable).values({
+      shipmentId: idParsed.data.id,
+      status: parsed.data.status,
+      location: parsed.data.location,
+      description: parsed.data.description,
+      timestamp: parsed.data.timestamp ? new Date(parsed.data.timestamp) : new Date(),
+    }).returning();
+
+    // Update shipment status to match event status if valid
+    const validStatuses = ["pending", "processing", "in_transit", "out_for_delivery", "delivered", "cancelled", "on_hold"];
+    if (validStatuses.includes(parsed.data.status)) {
+      await db.update(shipmentsTable).set({ status: parsed.data.status as any, updatedAt: new Date() }).where(eq(shipmentsTable.id, idParsed.data.id));
+    }
+
+    res.status(201).json(formatEvent(event));
+  });
+
+  return eventsRouter;
+}
+
+function formatShipment(s: any) {
+  return {
+    id: s.id,
+    trackingNumber: s.trackingNumber,
+    status: s.status,
+    serviceType: s.serviceType,
+    originAddress: s.originAddress,
+    originCity: s.originCity,
+    originCountry: s.originCountry,
+    destinationAddress: s.destinationAddress,
+    destinationCity: s.destinationCity,
+    destinationCountry: s.destinationCountry,
+    senderName: s.senderName,
+    senderEmail: s.senderEmail,
+    senderPhone: s.senderPhone,
+    recipientName: s.recipientName,
+    recipientEmail: s.recipientEmail,
+    recipientPhone: s.recipientPhone,
+    weight: Number(s.weight),
+    dimensions: s.dimensions,
+    declaredValue: s.declaredValue != null ? Number(s.declaredValue) : null,
+    shippingCost: Number(s.shippingCost),
+    currency: s.currency,
+    notes: s.notes,
+    customerId: s.customerId,
+    estimatedDelivery: s.estimatedDelivery?.toISOString() ?? new Date().toISOString(),
+    actualDelivery: s.actualDelivery?.toISOString() ?? null,
+    createdAt: s.createdAt?.toISOString() ?? new Date().toISOString(),
+    updatedAt: s.updatedAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function formatEvent(e: any) {
+  return {
+    id: e.id,
+    shipmentId: e.shipmentId,
+    status: e.status,
+    location: e.location,
+    description: e.description,
+    timestamp: e.timestamp?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+export default router;
