@@ -6,7 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 // PORT / BASE_PATH are provided by the Replit deploy environment. For local
 // development on any OS they default so `pnpm run dev` works with no env setup.
-const rawPort = process.env.PORT ?? "5173";
+const rawPort = process.env.PORT || "5173";
 
 const port = Number(rawPort);
 
@@ -14,7 +14,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH ?? "/";
+const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   base: basePath,

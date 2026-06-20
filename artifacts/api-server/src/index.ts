@@ -1,13 +1,9 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// PORT is provided by the Replit deploy environment. For local development on
+// any OS it defaults so the server starts with no env setup.
+const rawPort = process.env["PORT"] || "5000";
 
 const port = Number(rawPort);
 
