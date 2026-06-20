@@ -4,16 +4,20 @@ A global shipping and logistics platform: a public site for tracking parcels, re
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm --filter @workspace/shipfast run dev` — run the web app (needs `PORT` and `BASE_PATH`)
+Works on Windows (cmd/PowerShell), macOS, and Linux — no Unix shell required.
+
+- `pnpm install` — install dependencies (pnpm only; npm/yarn are blocked)
+- `pnpm dev` — run the API and web app together (also `pnpm start`)
+- `pnpm --filter @workspace/api-server run dev` — run just the API server (port 5000)
+- `pnpm --filter @workspace/shipfast run dev` — run just the web app (port 5173)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 
 ### Required environment
 
-- `DATABASE_URL` — Postgres connection string
-- Web build/dev: `PORT`, `BASE_PATH` (e.g. `/`)
+- `DATABASE_URL` — Postgres connection string (the API needs this to start)
+- Web `PORT` / `BASE_PATH` are optional locally (default 5173 and `/`); the deploy environment sets them.
 - Notifications (optional — falls back to console logging if unset):
   - `RESEND_API_KEY`, `NOTIFY_EMAIL_FROM` — email via Resend
   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` — SMS via Twilio
@@ -59,4 +63,5 @@ A global shipping and logistics platform: a public site for tracking parcels, re
 ## Gotchas
 
 - After changing lib types, delete stale `*.tsbuildinfo` and `lib/*/dist` if the typecheck reports phantom errors.
-- The web `vite.config.ts` requires `PORT` and `BASE_PATH`; builds fail without them.
+- The web `vite.config.ts` defaults `PORT`/`BASE_PATH` for local dev; the deploy environment overrides them.
+- Scripts are cross-platform: the preinstall guard is `node preinstall.mjs`, and the API dev script uses `cross-env` for `NODE_ENV`.
