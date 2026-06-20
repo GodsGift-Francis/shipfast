@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Package2, Search, FileText, Users, Map, Bell, ArrowRight } from "lucide-react";
+import { Package2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@workspace/replit-auth-web";
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user, isAuthenticated, login, logout } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -20,11 +22,22 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <Link href="/quote" className={location === "/quote" ? "text-primary" : "hover:text-primary transition-colors"}>Get Quote</Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">Portal Login</Link>
-            <Button asChild size="sm">
-              <Link href="/track">Track Package</Link>
-            </Button>
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <>
+                <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                  {user?.firstName ? `Hi, ${user.firstName}` : "Dashboard"}
+                </Link>
+                <Button variant="outline" size="sm" onClick={logout}>Log Out</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={login}>Log In</Button>
+                <Button size="sm" asChild>
+                  <Link href="/track">Track Package</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>

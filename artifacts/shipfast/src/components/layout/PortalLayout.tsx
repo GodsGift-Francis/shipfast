@@ -1,14 +1,17 @@
 import { Link, useLocation } from "wouter";
 import { 
   Package2, LayoutDashboard, Package, FileText, Users, 
-  Map, Bell, Receipt, Menu, LogOut, Loader2
+  Map, Bell, Receipt, Menu, LogOut, Loader2, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHealthCheck } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { isLoading, isError } = useHealthCheck();
+  const { isLoading: healthLoading, isError } = useHealthCheck();
+  const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,6 +22,27 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
     { href: "/routes", label: "Routes", icon: Map },
     { href: "/notifications", label: "Alerts", icon: Bell },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="text-center space-y-4">
+          <Package2 className="w-12 h-12 text-primary mx-auto" />
+          <h1 className="text-2xl font-bold">ShipFast Operations Portal</h1>
+          <p className="text-muted-foreground">Please log in to access the portal.</p>
+          <Button onClick={login} size="lg">Log In to Continue</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-muted/30">
@@ -48,12 +72,22 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-4 border-t">
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground" asChild>
-            <Link href="/">
-              <LogOut className="w-4 h-4 mr-2" />
-              Exit Portal
-            </Link>
+        <div className="p-4 border-t space-y-3">
+          {user && (
+            <div className="flex items-center gap-3 px-2">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={user.profileImageUrl || undefined} />
+                <AvatarFallback><User className="w-4 h-4" /></AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user.firstName} {user.lastName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={logout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Log Out
           </Button>
         </div>
       </aside>
@@ -67,7 +101,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
           <div className="flex items-center gap-4 ml-auto">
-            {isLoading ? (
+            {healthLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 System Check...

@@ -1,3 +1,4 @@
+export * from "./auth";
 export * from "./customers";
 export * from "./shipments";
 export * from "./tracking_events";

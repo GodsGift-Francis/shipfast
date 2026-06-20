@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import shipmentsRouter from "./shipments";
 import trackingRouter from "./tracking";
 import { createEventsRouter } from "./tracking";
@@ -13,6 +14,7 @@ import invoicesRouter from "./invoices";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use("/shipments", shipmentsRouter);
 router.use("/shipments/:id/events", createEventsRouter());
 router.use("/track", trackingRouter);
