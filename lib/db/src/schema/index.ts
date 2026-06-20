@@ -6,3 +6,4 @@ export * from "./quotes";
 export * from "./invoices";
 export * from "./routes";
 export * from "./notifications";
+export * from "./notification_deliveries";

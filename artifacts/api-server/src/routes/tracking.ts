@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { shipmentsTable, trackingEventsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { TrackPackageParams, ListTrackingEventsParams, AddTrackingEventParams, AddTrackingEventBody } from "@workspace/api-zod";
+import { TrackPackageParams, ListTrackingEventsParams, AddTrackingEventParams, AddTrackingEventBody, type IdParam } from "@workspace/api-zod";
+import { applyStatusChange } from "../services/shipmentStatus";
 
 const router = Router();
 
@@ -31,18 +32,18 @@ export function createEventsRouter() {
   const eventsRouter = Router({ mergeParams: true });
 
   eventsRouter.get("/", async (req, res) => {
-    const parsed = ListTrackingEventsParams.safeParse({ id: Number(req.params.id) });
+    const parsed = ListTrackingEventsParams.safeParse({ id: Number((req.params as { id: string }).id) });
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid ID" });
       return;
     }
 
-    const events = await db.select().from(trackingEventsTable).where(eq(trackingEventsTable.shipmentId, parsed.data.id)).orderBy(desc(trackingEventsTable.timestamp));
+    const events = await db.select().from(trackingEventsTable).where(eq(trackingEventsTable.shipmentId, (parsed.data as IdParam).id)).orderBy(desc(trackingEventsTable.timestamp));
     res.json(events.map(formatEvent));
   });
 
   eventsRouter.post("/", async (req, res) => {
-    const idParsed = AddTrackingEventParams.safeParse({ id: Number(req.params.id) });
+    const idParsed = AddTrackingEventParams.safeParse({ id: Number((req.params as { id: string }).id) });
     if (!idParsed.success) {
       res.status(400).json({ error: "Invalid ID" });
       return;
@@ -54,21 +55,22 @@ export function createEventsRouter() {
       return;
     }
 
-    const [event] = await db.insert(trackingEventsTable).values({
-      shipmentId: idParsed.data.id,
+    // applyStatusChange records the event, syncs the shipment status when the
+    // event status is a known value, and fires notifications on a real
+    // transition — all in one place.
+    const result = await applyStatusChange((idParsed.data as IdParam).id, {
       status: parsed.data.status,
       location: parsed.data.location,
       description: parsed.data.description,
-      timestamp: parsed.data.timestamp ? new Date(parsed.data.timestamp) : new Date(),
-    }).returning();
+      timestamp: parsed.data.timestamp ? new Date(parsed.data.timestamp) : undefined,
+    });
 
-    // Update shipment status to match event status if valid
-    const validStatuses = ["pending", "processing", "in_transit", "out_for_delivery", "delivered", "cancelled", "on_hold"];
-    if (validStatuses.includes(parsed.data.status)) {
-      await db.update(shipmentsTable).set({ status: parsed.data.status as any, updatedAt: new Date() }).where(eq(shipmentsTable.id, idParsed.data.id));
+    if (!result) {
+      res.status(404).json({ error: "Shipment not found" });
+      return;
     }
 
-    res.status(201).json(formatEvent(event));
+    res.status(201).json(formatEvent(result.event));
   });
 
   return eventsRouter;

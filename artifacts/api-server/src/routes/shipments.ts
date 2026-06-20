@@ -13,7 +13,10 @@ import {
   GetShipmentParams,
   UpdateShipmentParams,
   CancelShipmentParams,
+  type ListShipmentsQuery,
 } from "@workspace/api-zod";
+import { applyStatusChange } from "../services/shipmentStatus";
+import { notifyStatusChange } from "../lib/notifications";
 
 const router = Router();
 
@@ -51,7 +54,7 @@ function calcEstimatedDelivery(serviceType: string): Date {
 
 router.get("/", async (req, res) => {
   const parsed = ListShipmentsQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  const params: Partial<ListShipmentsQuery> = parsed.success ? parsed.data : {};
 
   const { status, customerId, search, page = 1, limit = 20 } = params;
   const offset = (page - 1) * limit;
@@ -121,13 +124,16 @@ router.post("/", async (req, res) => {
   }).returning();
 
   // Add initial tracking event
-  await db.insert(trackingEventsTable).values({
+  const [initialEvent] = await db.insert(trackingEventsTable).values({
     shipmentId: shipment.id,
     status: "pending",
     location: `${data.originCity}, ${data.originCountry}`,
     description: "Shipment booked and awaiting pickup",
     timestamp: new Date(),
-  });
+  }).returning();
+
+  // Booking confirmation across email / SMS / in-app.
+  await notifyStatusChange(shipment, initialEvent);
 
   // Update customer stats
   if (data.customerId) {
@@ -180,13 +186,34 @@ router.patch("/:id", async (req, res) => {
     return;
   }
 
-  const updates: Record<string, any> = { updatedAt: new Date() };
-  if (parsed.data.status) updates.status = parsed.data.status;
-  if (parsed.data.estimatedDelivery) updates.estimatedDelivery = new Date(parsed.data.estimatedDelivery);
-  if (parsed.data.actualDelivery) updates.actualDelivery = new Date(parsed.data.actualDelivery);
-  if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes;
+  // Non-status field updates applied alongside any status change.
+  const extraUpdates: Record<string, any> = {};
+  if (parsed.data.estimatedDelivery) extraUpdates.estimatedDelivery = new Date(parsed.data.estimatedDelivery);
+  if (parsed.data.actualDelivery) extraUpdates.actualDelivery = new Date(parsed.data.actualDelivery);
+  if (parsed.data.notes !== undefined) extraUpdates.notes = parsed.data.notes;
 
-  const [updated] = await db.update(shipmentsTable).set(updates).where(eq(shipmentsTable.id, idParsed.data.id)).returning();
+  // A status change goes through the shared service: it records a tracking
+  // event and dispatches email / SMS / in-app notifications when the status
+  // actually moves to a new value.
+  if (parsed.data.status) {
+    const result = await applyStatusChange(idParsed.data.id, {
+      status: parsed.data.status,
+      extraUpdates,
+    });
+    if (!result) {
+      res.status(404).json({ error: "Shipment not found" });
+      return;
+    }
+    res.json(formatShipment(result.shipment));
+    return;
+  }
+
+  // No status change — just persist the other fields.
+  const [updated] = await db
+    .update(shipmentsTable)
+    .set({ ...extraUpdates, updatedAt: new Date() })
+    .where(eq(shipmentsTable.id, idParsed.data.id))
+    .returning();
   if (!updated) {
     res.status(404).json({ error: "Shipment not found" });
     return;
@@ -202,13 +229,16 @@ router.delete("/:id", async (req, res) => {
     return;
   }
 
-  const [updated] = await db.update(shipmentsTable).set({ status: "cancelled", updatedAt: new Date() }).where(eq(shipmentsTable.id, idParsed.data.id)).returning();
-  if (!updated) {
+  const result = await applyStatusChange(idParsed.data.id, {
+    status: "cancelled",
+    description: "Shipment cancelled",
+  });
+  if (!result) {
     res.status(404).json({ error: "Shipment not found" });
     return;
   }
 
-  res.json(formatShipment(updated));
+  res.json(formatShipment(result.shipment));
 });
 
 function formatShipment(s: any) {

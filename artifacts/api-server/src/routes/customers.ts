@@ -2,13 +2,13 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { customersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { CreateCustomerBody, ListCustomersQueryParams, GetCustomerParams, UpdateCustomerParams, UpdateCustomerBody } from "@workspace/api-zod";
+import { CreateCustomerBody, ListCustomersQueryParams, GetCustomerParams, UpdateCustomerParams, UpdateCustomerBody, type ListCustomersQuery } from "@workspace/api-zod";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
   const parsed = ListCustomersQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  const params: Partial<ListCustomersQuery> = parsed.success ? parsed.data : {};
   const { search, page = 1 } = params;
   const limit = 50;
   const offset = (page - 1) * limit;
