@@ -56,6 +56,16 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // In local dev the web app (this server) and the API server run on
+    // different ports. Proxy /api to the API so relative API calls and the
+    // login redirect reach the backend. On Replit both are one origin and
+    // this proxy is unused.
+    proxy: {
+      "/api": {
+        target: process.env.API_PROXY_TARGET || "http://localhost:5000",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,

@@ -21,6 +21,16 @@ import {
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
+// Real Replit OIDC needs REPL_ID and can't authenticate a localhost callback.
+// When there is no REPL_ID and we're not in production, fall back to a local
+// dev login so the portal is usable on a developer's machine. This can never
+// activate on Replit (REPL_ID is always set there) or in production.
+const AUTH_DEV_MODE = !process.env.REPL_ID && process.env.NODE_ENV !== "production";
+
+// Secure cookies require HTTPS, which local http://localhost is not. Only mark
+// cookies secure in production so dev sessions actually persist in the browser.
+const COOKIE_SECURE = process.env.NODE_ENV === "production";
+
 const router: IRouter = Router();
 
 function getOrigin(req: Request): string {
@@ -33,7 +43,7 @@ function getOrigin(req: Request): string {
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
-    secure: true,
+    secure: COOKIE_SECURE,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL,
@@ -43,7 +53,7 @@ function setSessionCookie(res: Response, sid: string) {
 function setOidcCookie(res: Response, name: string, value: string) {
   res.cookie(name, value, {
     httpOnly: true,
-    secure: true,
+    secure: COOKIE_SECURE,
     sameSite: "lax",
     path: "/",
     maxAge: OIDC_COOKIE_TTL,
@@ -91,10 +101,35 @@ router.get("/auth/user", (req: Request, res: Response) => {
 });
 
 router.get("/login", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.query.returnTo);
+
+  // Local dev: skip Replit OIDC and sign in a deterministic dev user.
+  if (AUTH_DEV_MODE) {
+    const dbUser = await upsertUser({
+      sub: "dev-user",
+      email: "dev@shipfast.local",
+      first_name: "Dev",
+      last_name: "User",
+    });
+    const now = Math.floor(Date.now() / 1000);
+    const sid = await createSession({
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        profileImageUrl: dbUser.profileImageUrl,
+      },
+      access_token: "dev",
+      expires_at: now + SESSION_TTL / 1000,
+    });
+    setSessionCookie(res, sid);
+    res.redirect(returnTo);
+    return;
+  }
+
   const config = await getOidcConfig();
   const callbackUrl = `${getOrigin(req)}/api/callback`;
-
-  const returnTo = getSafeReturnTo(req.query.returnTo);
 
   const state = oidc.randomState();
   const nonce = oidc.randomNonce();
@@ -188,11 +223,17 @@ router.get("/callback", async (req: Request, res: Response) => {
 });
 
 router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const origin = getOrigin(req);
-
   const sid = getSessionId(req);
   await clearSession(res, sid);
+
+  // Local dev: no OIDC end-session endpoint to hit; just go home.
+  if (AUTH_DEV_MODE) {
+    res.redirect("/");
+    return;
+  }
+
+  const config = await getOidcConfig();
+  const origin = getOrigin(req);
 
   const endSessionUrl = oidc.buildEndSessionUrl(config, {
     client_id: process.env.REPL_ID!,
