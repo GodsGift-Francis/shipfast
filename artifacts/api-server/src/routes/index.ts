@@ -10,19 +10,22 @@ import dashboardRouter from "./dashboard";
 import routesHandlerRouter from "./routes-handler";
 import notificationsRouter from "./notifications";
 import invoicesRouter from "./invoices";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use("/shipments", shipmentsRouter);
-router.use("/shipments/:id/events", createEventsRouter());
+
 router.use("/track", trackingRouter);
+
+router.use("/shipments", requireAuth, shipmentsRouter);
+router.use("/shipments/:id/events", requireAuth, createEventsRouter());
 router.use("/quotes", quotesRouter);
-router.use("/customers", customersRouter);
-router.use("/dashboard", dashboardRouter);
-router.use("/routes", routesHandlerRouter);
-router.use("/notifications", notificationsRouter);
-router.use("/invoices", invoicesRouter);
+router.use("/customers", requireAuth, customersRouter);
+router.use("/dashboard", requireAuth, dashboardRouter);
+router.use("/routes", requireAuth, routesHandlerRouter);
+router.use("/notifications", requireAuth, notificationsRouter);
+router.use("/invoices", requireAuth, invoicesRouter);
 
 export default router;

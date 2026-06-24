@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { quotesTable, shipmentsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { CreateQuoteBody, GetQuoteParams, AcceptQuoteParams } from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ function calcQuote(serviceType: string, weight: number, originCountry: string, d
   return { cost, days };
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", requireAuth, async (_req, res) => {
   const quotes = await db.select().from(quotesTable).orderBy(desc(quotesTable.createdAt));
   res.json(quotes.map(formatQuote));
 });
@@ -63,7 +64,7 @@ router.post("/", async (req, res) => {
   res.status(201).json(formatQuote(quote));
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   const parsed = GetQuoteParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid ID" });
@@ -79,7 +80,7 @@ router.get("/:id", async (req, res) => {
   res.json(formatQuote(quote));
 });
 
-router.post("/:id/accept", async (req, res) => {
+router.post("/:id/accept", requireAuth, async (req, res) => {
   const parsed = AcceptQuoteParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid ID" });
